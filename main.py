@@ -6,5 +6,5 @@ from intersection import Solver
 if __name__ == '__main__':
     converter = Converter('data\lines.svg')
     solver = Solver(converter.paths)
-    intersections = solver.findIntersectionWithLib()
+    intersections = solver.findIntersectionWithBentleyOttmann()
     converter.saveCurrentSvg('data\output.svg', nodes = intersections)
