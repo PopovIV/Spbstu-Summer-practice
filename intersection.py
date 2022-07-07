@@ -29,12 +29,5 @@ class Solver:
     # Out: nodes - list of tuples (x,y) - intersection points
     def findIntersectionWithBentleyOttmann(self):
         intersections = []
-        # Initialize priority queue
-        q = PriorityQueue()
-        for curve in self.curves:
-            q.put((curve.start.real, curve))
-            q.put((curve.end.real, curve))
 
-        line = myLine(self.curves[0])
-        intersections.append(line.start.asComplex())
         return intersections
