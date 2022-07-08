@@ -1,126 +1,144 @@
 # Module for sweep line data structure
-from sortedcontainers import SortedSet, SortedDict
-from geometry import Point, myLine, comparablePoint
+from queue import PriorityQueue
+from sortedcontainers import SortedSet
+from geometry import Point, myLine
 from utility import approxEqual
-from event import Event
-from functools import cmp_to_key
+from event import Event, EventType
 
 # Class representing SweepLine - main class for Bentley-Ottmann algorithm
 class SweepLine:
 
-    @classmethod
-    def fixDistances(self, point, T):
-        comparablePoint = point
-        T.update([])
-        return T
-
-    @classmethod
-    def nearestLeft(self, line, T):
-        prev = None
-        for seg in T:
-            if line == seg:
-                return prev
-            else:
-                prev = seg
-        return None
-
-    @classmethod
-    def nearestRight(self, line, T):
-        prev = None
-        for seg in T.__reversed__():
-            if line == seg:
-                return prev
-            else:
-                prev = seg
-        return None
-
-    @classmethod
-    def nearestLeftForPoint(self, point, T):
-        minDistance = None
-        min = float('inf')
-        for seg in T:
-            if min > abs(seg.distance(point)) and seg.distance(point) >= 0:
-                min = abs(seg.distance(point))
-                minDistance = seg
-        return minDistance
-
-    @classmethod
-    def nearestRightForPoint(self, point, T):
-        minDistance = None
-        min = float('inf')
-        for seg in T:
-            if min > abs(seg.distance(point)) and seg.distance(point) <= 0:
-                min = abs(seg.distance(point))
-                minDistance = seg
-        return minDistance
-
-    @classmethod
-    def findNewEvent(self, line1, line2, point, SD):
-        if line1 is not None and line2 is not None:
-            intersectionPoint = line1.findIntersection(line2)
-            if intersectionPoint is not None and intersectionPoint.y < point.y or \
-                approxEqual(intersectionPoint.y, point.y) and intersectionPoint.x > point.x:
-                if not SD.__contains__(intersectionPoint):
-                    SD[intersectionPoint] = Event()
-                return intersectionPoint
-        return None
-
-    @classmethod
-    def sweepIntersections(self, lines):
-        Q = SortedDict()
+    # Constructor
+    # In: lines - list of myLine instances
+    def __init__(self, lines):
+        self.Q = PriorityQueue()
+        self.T = SortedSet()
+        self.intersections = []
+        # Fill queue with points 
         for line in lines:
-            if Q.__contains__(line.start):
-                Q[line.start].lines.add(line)
+            self.Q.put(Event(line.start, EventType.Start, [line]))
+            self.Q.put(Event(line.end, EventType.End, [line]))
+
+    # Function to find the greatest element in this set which is strictly less than the given element
+    # in: line - instance of myLine
+    # out: closest below line or None
+    def nearestBelow(self, line):
+        prev = None
+        for seg in self.T:
+            if line == seg:
+                return prev
             else:
-                Q[line.start] = Event()
-                Event.lines.append(line)
-            if not Q.__contains__(line.end):
-                Q[line.end] = Event()
+                prev = seg
+        return None
 
-        T = SortedSet()
-        intersections = []
-        while not len(Q) == 0:
-            point, event = Q.popitem(index = 0)
-            lower = []
-            contain = []
-            for line in T:
-                if(line.end == point):
-                    lower.append(line)
-                elif line.checkPointIntersection(point) and line.start != point:
-                    contain.append(line)
-            #if len(event.lines) + len(lower) + len(contain) > 1:
-            #    intersections.append(point)
-
-            for line in lower:
-                if line in T:
-                    T.discard(line)
-
-            contain.extend(event.lines)
-            for line in event.lines:
-                T.add(line)
-
-            T = self.fixDistances(point, T)
-            if len(contain) == 0:
-                sl = self.nearestLeftForPoint(point, T)
-                sr = self.nearestRightForPoint(point, T)
-                i = self.findNewEvent(sl, sr, point, Q)
-                intersections.append(i)
+    # Function to find the smallest element in this set which is strictly greater than the given element
+    # In: line - instance of myLine
+    # Out: closest below line or None
+    def nearestHigher(self, line):
+        prev = None
+        for seg in self.T.__reversed__():
+            if line == seg:
+                return prev
             else:
-                comparablePoint = point
-                contain.sort(key = cmp_to_key(lambda line1, line2: line1.findXCoord(comparablePoint) - line2.findXCoord(comparablePoint)))
+                prev = seg
+        return None
 
-                SP = contain[0]
-                SPP = contain[-1]
+    # Function to recalculate values in lines
+    # In: location - X-coordinate of point
+    def recalculate(self, location : float):
+        for line in self.T:
+            line.calculateValue(location)
+        self.T.update([])#
 
-                sl = self.nearestLeft(SP, T)
-                sr = self.nearestRight(SPP, T)
-                i = self.findNewEvent(SP, sl, point, Q)
-                j = self.findNewEvent(SPP, sr, point, Q)
-                if(i != j):
-                    intersections.append(j)
-                intersections.append(i)
+    # Function to find and end intersection to Q
+    # In: line1, line2 - instances of myLine class
+    #     location - current location of sweep line
+    # Out: True, if there was intersection. False, otherwise
+    def reportIntersection(self, line1 : myLine, line2 : myLine, location : float):
+        intersection = line1.findIntersection(line2)
+        if intersection != None and intersection.x > location:
+            self.Q.put(Event(intersection, EventType.Intersection, [line1, line2]))
+            return True
+        return False
 
-        return intersections
+    # Function to remove duplicate intersections
+    # In: line1, line2 - instances of myLine class
+    # Out: True, if there was intersection. False, otherwise
+    def removeEvent(self, line1 : myLine, line2 : myLine):
+        for event in self.Q.queue:
+            if event.type == EventType.Intersection:
+                if (event.lines[0] == line1 and event.lines[1] == line2) or\
+                    (event.lines[0] == line2 and event.lines[1] == line1):
+                    self.Q.queue.remove(event)
+                    return True
+        return False
+
+    # Function to swap two lines in T
+    # In: line1, line2 - instances of myLine class
+    def swap(self, line1, line2):
+        #self.T.discard(line1)
+        #self.T.discard(line2)
+        # bad
+        for line in self.T:
+            if line == line1 or line2 == line:
+                self.T.discard(line)
+        value = line1.value
+        line1.value = line2.value
+        line2.value = value
+        self.T.add(line1)
+        self.T.add(line2)
+
+    # Function to find all intersections:
+    def sweepIntersections(self):
+        while not self.Q.empty():
+            event = self.Q.get()
+            location = event.value
+
+            if event.type == EventType.Start:
+                self.recalculate(location)
+                for line in event.lines:
+                    self.T.add(line)
+                    r = self.nearestBelow(line)
+                    if r != None:
+                        self.reportIntersection(r, line, location)
+                    t = self.nearestHigher(line)
+                    if t != None:
+                        self.reportIntersection(t, line, location)
+                    if t != None and r != None:
+                        self.removeEvent(r, t)
+
+            elif event.type == EventType.End:
+                for line in event.lines:
+                    r = self.nearestBelow(line)
+                    t = self.nearestHigher(line)
+                    if t != None and r != None:
+                        self.reportIntersection(r, t, location)
+                        self.T.discard(line)
+
+            elif event.type == EventType.Intersection:
+                line1 = event.lines[0]
+                line2 = event.lines[1]
+                self.swap(line1, line2)
+
+                if line1.value < line2.value:
+                    t = self.nearestHigher(line1)
+                    r = self.nearestBelow(line2)
+                    if t != None:
+                        self.reportIntersection(t, line1, location)
+                        self.removeEvent(t, line2)
+                    if r != None:
+                        self.reportIntersection(r, line2, location)
+                        self.removeEvent(r, line1)
+                else:
+                    t = self.nearestHigher(line2)
+                    r = self.nearestBelow(line1)
+                    if t != None:
+                        self.reportIntersection(t, line2, location)
+                        self.removeEvent(t, line1)
+                    if r != None:
+                        self.reportIntersection(r, line1, location)
+                        self.removeEvent(r, line2)
+                self.intersections.append([event.point, line1, line2])
 
 
 

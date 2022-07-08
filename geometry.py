@@ -10,7 +10,7 @@ class Point:
     # Constructor
     # In: x - X-coordinate
     #     y - Y-coordinate
-    def __init__(self, x, y):
+    def __init__(self, x : float, y : float):
         self.x = x
         self.y = y
 
@@ -45,6 +45,8 @@ class Point:
             return False
         if approxEqual(self.x, other.x) and approxEqual(self.y, other.y):
             return True
+        else:
+            return False
 
     def __lt__(self, other):
         if self.y > other.y or approxEqual(self.y, other.y) and self.x < other.x:
@@ -69,8 +71,6 @@ class Point:
 def crossProduct(first : Point, second : Point):
     return first.x * second.y - first.y * second.x
 
-comparablePoint = Point(0, 0)
-
 # Class representing Line
 class myLine:
 
@@ -78,19 +78,37 @@ class myLine:
     # In: start - start Point
     #     end - end Point
     def __init__(self, start : Point, end : Point):
-        # Firstly compare y's
-        if (start.y > end.y or approxEqual(start.y, end.y)) and start.x < end.x:
+        if start.x < end.x:
             self.start = start
             self.end = end
-        else:
+        elif end.x < start.x:
             self.end = start
             self.start = end
+        elif start.x == end.x:
+            if start.y < end.y:
+                self.start = start
+                self.end = end
+            else:
+                self.end = start
+                self.start = end
+        self.calculateValue(self.start.x)
+
+    # Function to calculate y from x in Line
+    # in: x - X coordinate
+    def calculateValue(self, x : float):
+        self.value = self.start.y + ((self.end.y - self.start.y / (self.end.x - self.start.x)) * (x - self.start.x))
 
     # Static method to transform svgtools lib Line to myLine
-    # In: Line - svgtoolslib Line class instance
+    # In: line - svgtoolslib Line class instance
     @staticmethod
     def transformToMyLine(line : Line):
         return myLine(Point(line.start.real, line.start.imag), Point(line.end.real, line.end.imag))
+
+    # Static method to transform myLine to vgtools lib Line
+    # In: line - myLine class instance
+    @staticmethod
+    def transformFromMyLine(line : Line):
+        return Line(complex(line.start.x, line.start.y), complex(line.end.x, line.end.y))
 
     # Overrides
     def __repr__(self):
@@ -108,28 +126,9 @@ class myLine:
         return not (self == other)
 
     def __lt__(self, other):
-        point = comparablePoint
-        if self.findXCoord(point) < other.findXCoord(point):
+        if self.value < other.value:
             return True
-        return False
-
-    # Function to find X-coordinate by Point p y's coordinate
-    # in: point - Point instance
-    #     below - step
-    # out: closest X-coordinate
-    def findXCoord(self, point : Point, below = 0.00005):
-        y = point.y - below
-        p = self.end - self.start
-        t = (y - self.start.y) / p.y
-        return t * p.x + self.start.x
-
-    # Function to find distance between line and point
-    # in: point - Point instance
-    # out: distance between line and point
-    def distance(self, point):
-        p1 = self.end - self.start
-        p2 = point - self.start
-        return crossProduct(p1, p2) / p1.length()
+        return False#? 1000 - 7 ???
 
     # Function to check intersection with other line
     # in: other - instance of myLine to check intersection with
@@ -170,3 +169,4 @@ class myLine:
         rxs = crossProduct(p1, p2)
         t = crossProduct(other.start - self.start, p2) / rxs
         return self.start + Point(t * p1.x, t * p1.y)
+
