@@ -8,7 +8,7 @@ from SweepLine import SweepLine
 if __name__ == '__main__':
     converter = Converter('data\lines.svg')
     solver = Solver(converter.paths)
-    intersections = solver.findIntersectionWithExhaustive()
+    intersections = solver.findIntersectionWithBentleyOttmann()
     converter.saveCurrentSvg('data\output.svg', nodes = intersections)
 
     #lines = []

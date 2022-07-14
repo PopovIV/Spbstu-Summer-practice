@@ -46,9 +46,11 @@ class SweepLine:
     # Function to recalculate values in lines
     # In: location - X-coordinate of point
     def recalculate(self, location : float):
-        for line in self.T:
+        tmp = self.T.copy()
+        self.T.clear()
+        for line in tmp:
             line.calculateValue(location)
-        self.T.update([])#
+            self.T.add(line)
 
     # Function to find and end intersection to Q
     # In: line1, line2 - instances of myLine class
@@ -76,12 +78,8 @@ class SweepLine:
     # Function to swap two lines in T
     # In: line1, line2 - instances of myLine class
     def swap(self, line1, line2):
-        #self.T.discard(line1)
-        #self.T.discard(line2)
-        # bad
-        for line in self.T:
-            if line == line1 or line2 == line:
-                self.T.discard(line)
+        self.T.discard(line1)
+        self.T.discard(line2)
         value = line1.value
         line1.value = line2.value
         line2.value = value
@@ -95,25 +93,25 @@ class SweepLine:
             location = event.value
 
             if event.type == EventType.Start:
-                self.recalculate(location)
                 for line in event.lines:
+                    self.recalculate(location)#
                     self.T.add(line)
                     r = self.nearestBelow(line)
-                    if r != None:
+                    if r is not None:
                         self.reportIntersection(r, line, location)
                     t = self.nearestHigher(line)
-                    if t != None:
+                    if t is not None:
                         self.reportIntersection(t, line, location)
-                    if t != None and r != None:
+                    if t is not None and r is not None:
                         self.removeEvent(r, t)
 
             elif event.type == EventType.End:
                 for line in event.lines:
                     r = self.nearestBelow(line)
                     t = self.nearestHigher(line)
-                    if t != None and r != None:
+                    if t is not None and r is not None:
                         self.reportIntersection(r, t, location)
-                        self.T.discard(line)
+                    self.T.discard(line)
 
             elif event.type == EventType.Intersection:
                 line1 = event.lines[0]
@@ -123,19 +121,19 @@ class SweepLine:
                 if line1.value < line2.value:
                     t = self.nearestHigher(line1)
                     r = self.nearestBelow(line2)
-                    if t != None:
+                    if t is not None:
                         self.reportIntersection(t, line1, location)
                         self.removeEvent(t, line2)
-                    if r != None:
+                    if r is not None:
                         self.reportIntersection(r, line2, location)
                         self.removeEvent(r, line1)
                 else:
                     t = self.nearestHigher(line2)
                     r = self.nearestBelow(line1)
-                    if t != None:
+                    if t is not None:
                         self.reportIntersection(t, line2, location)
                         self.removeEvent(t, line1)
-                    if r != None:
+                    if r is not None:
                         self.reportIntersection(r, line1, location)
                         self.removeEvent(r, line2)
                 self.intersections.append([event.point, line1, line2])
